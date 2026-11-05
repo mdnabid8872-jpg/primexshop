@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PrimeXshop – লগইন</title>
+<style>
+body{margin:0;background:#0a0c1f;color:#f2f4ff;font-family:system-ui,"Noto Sans Bengali",sans-serif;display:flex;justify-content:center;min-height:100vh;padding:20px;box-sizing:border-box}
+.card{background:#12163a;border:1px solid #232a5c;border-radius:18px;padding:22px;width:100%;max-width:380px;align-self:flex-start;margin-top:20px}
+h2{margin:0 0 14px}
+label{font-size:14px;color:#9aa3d6}
+input{width:100%;box-sizing:border-box;background:#0a0c1f;border:1px solid #232a5c;color:#f2f4ff;border-radius:10px;padding:12px;margin:6px 0 12px;font-size:15px}
+button{width:100%;background:#2f5bff;color:#fff;border:0;border-radius:12px;padding:12px;font-size:16px;font-weight:700;cursor:pointer}
+button.ghost{background:transparent;border:1px solid #232a5c;margin-top:8px}
+.tabs{display:flex;gap:8px;margin-bottom:14px}
+.tabs button{flex:1}
+.err{color:#ff8a7a;min-height:20px;font-size:14px}
+.bal{font-size:28px;font-weight:800;color:#f0a030;margin:8px 0}
+a{color:#9aa3d6;display:block;margin:14px 0}
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="authBox">
+    <div class="tabs">
+      <button id="tLogin" onclick="mode('login')">লগইন</button>
+      <button id="tReg" class="ghost" onclick="mode('register')">নতুন অ্যাকাউন্ট</button>
+    </div>
+    <div id="regFields" hidden>
+      <label>নাম</label><input id="name">
+    </div>
+    <label>মোবাইল নম্বর</label><input id="phone" type="tel" placeholder="01XXXXXXXXX">
+    <label>পাসওয়ার্ড</label><input id="pass" type="password">
+    <div class="err" id="err"></div>
+    <button onclick="submit()">জমা দিন</button>
+  </div>
+
+  <div id="dash" hidden>
+    <h2 id="hi"></h2>
+    <label>ব্যালেন্স</label>
+    <div class="bal" id="bal">৳0</div>
+    <a href="index.html">শপে ফিরে যান</a>
+    <button class="ghost" onclick="logout()">লগআউট</button>
+  </div>
+</div>
+
+<script>
+let isReg = false;
+const $ = id => document.getElementById(id);
+
+function mode(m) {
+  isReg = m === 'register';
+  $('regFields').hidden = !isReg;
+  $('tLogin').className = isReg ? 'ghost' : '';
+  $('tReg').className = isReg ? '' : 'ghost';
+  $('err').textContent = '';
+}
+
+async function api(path, body, token) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const r = await fetch(path, {
+    method: body ? 'POST' : 'GET',
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || 'সমস্যা হয়েছে');
+  return d;
+}
+
+async function submit() {
+  $('err').textContent = '';
+  try {
+    const body = { phone: $('phone').value, password: $('pass').value };
+    if (isReg) body.name = $('name').value;
+    const d = await api(isReg ? '/api/register' : '/api/login', body);
+    localStorage.setItem('token', d.token);
+    show();
+  } catch (e) {
+    $('err').textContent = e.message;
+  }
+}
+
+async function show() {
+  const token = localStorage.getItem('token');
+  if (!token) { $('authBox').hidden = false; $('dash').hidden = true; return; }
+  try {
+    const u = await api('/api/me', null, token);
+    $('authBox').hidden = true;
+    $('dash').hidden = false;
+    $('hi').textContent = 'স্বাগতম, ' + u.name;
+    $('bal').textContent = '৳' + u.balance;
+  } catch {
+    localStorage.removeItem('token');
+    $('authBox').hidden = false;
+    $('dash').hidden = true;
+  }
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  show();
+}
+
+mode('login');
+show();
+</script>
+</body>
+</html>
